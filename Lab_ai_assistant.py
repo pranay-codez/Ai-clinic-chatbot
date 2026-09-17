@@ -1,11 +1,44 @@
 import requests
 from email_validator import validate_email, EmailNotValidError
 import json
+from sentence_transformers import SentenceTransformer, util
+from ollama import chat
 
 class AI_clinic:
-    def __init__(self,query,url="http://localhost:5678/webhook-test/54cb7296-5aeb-4bb0-9c6e-7d0b45c5b4d3"):
+    def __init__(self,query,url="http://localhost:5678/webhook-test/54cb7296-5aeb-4bb0-9c6e-7d0b45c5b4d3",model_name='sentence-transformers/all-MiniLM-L6-v2' , chat_model_name = 'llama3.2'):
         self.query = query
         self.url = url
+        self.model = SentenceTransformer(model_name)
+        self.chat_model_name = chat_model_name
+        self.prompt = f"""
+        Classify the patient query into exactly ONE of these intents:
+
+        lab_status
+        next_checkup
+        clinic_hours
+        appointment_booking
+        unknown
+
+        Query: "{query}"
+
+        Return ONLY the intent name.
+        Do not explain your answer.
+        Do not add punctuation.
+        Do not add any other words.
+
+        Intent:
+        """
+
+    def analyze_query(self):
+        messages = [
+            {
+                "role": "user",
+                "content": f"Analyze the following query with the follwing promp:\n{self.prompt}"
+            }
+        ]
+        response = chat(model=self.chat_model_name, messages=messages)
+        return response["message"]["content"]
+    
 
 
     def take_query(self,params):
@@ -26,11 +59,11 @@ class AI_clinic:
 
 
 def main():
-    
+    print("This is an AI assistant\nI can help with your basic queries")
     query = input("Enter your query : ")
     patient = AI_clinic(query)
-    print("This is an AI assistant\nI can help with your basic queries\nIf your query falls under this category choose that option but before that")
-    while True:
+    exit = True
+    while exit:
         print("To process your queries first enter patient Id and mail_id\n")
         try:
             id = int(input("Enter patient id : "))
@@ -45,112 +78,128 @@ def main():
         except ValueError as e:
             print(f"Error: {e}. Please try again.")
             continue#can be done better by returning none ig
+        while True:
+            try:
+                response = patient.analyze_query()
+                print(repr(response))
+            except Exception as e:
+                print(f"Error:{e}")
+                continue
 
-       
-        print("1. to know about lab status\n")
-        print("2. Next checkup\n")
-        print("3. to Know about clinic hours\n")
-        print("4. about appointment booking\n")
-        print("5.Exit!")
-        try:
-            choice  = int(input("Enter your choice : "))
-        except ValueError:
-            print("Invalid input! Please enter a number between 1 and 5.? or check the type of input given")
-            continue
-
-        if choice == 1:
-            params = {
-                "id":id,
-                "intent":"lab_status",
-                "mailID":mail_id
-            }
-            patient.take_query(params)
-            null_output = patient.response.json()
-            print(null_output['message'])
-            try:
-                option = input("Enter 'Y' to continue 'Q' to quit: ").lower()
-                if option == 'y':
-                    print("\nUnderstood")
+            if response == "lab_status":
+                params = {
+                    "id":id,
+                    "intent":"lab_status",
+                    "mailID":mail_id
+                }
+                patient.take_query(params)
+                print("STATUS:", patient.response.status_code)
+                print("RESPONSE:", repr(patient.response.text))
+                null_output = patient.response.json()
+                print(null_output['message'])
+                try:
+                    option = input("Enter 'Y' to continue 'Q' to quit: ").lower()
+                    if option == 'y':
+                        print("\nUnderstood")
+                        continue
+                    elif option =='q':
+                        print("\nExiting...")
+                        exit = False
+                        break
+                    else:
+                        raise ValueError("\nTaking it as a yes!!")
+                except ValueError:
+                    print(ValueError)
                     continue
-                elif option =='q':
-                    print("\nExiting...")
-                    break
-                else:
-                    raise ValueError("\nTaking it as a yes!!")
-            except ValueError:
-                print(ValueError)
-                continue
-        elif choice == 2:
-            params = {
-                "id":id,
-                "intent":"next_checkup",
-                "mailID":mail_id
-            }
-            patient.take_query(params)
-            null_output = patient.response.json()
-            print(null_output['message'])
-            try:
-                option = input("Enter 'Y' to continue 'Q' to quit: ").lower()
-                if option == 'y':
-                    print("\nUnderstood..")
+            elif response == "next_checkup":
+                params = {
+                    "id":id,
+                    "intent":"next_checkup",
+                    "mailID":mail_id
+                }
+                patient.take_query(params)
+                null_output = patient.response.json()
+                print(null_output['message'])
+                try:
+                    option = input("Enter 'Y' to continue 'Q' to quit: ").lower()
+                    if option == 'y':
+                        print("\nUnderstood..")
+                        continue
+                    elif option =='q':
+                        print("\nExiting...")
+                        exit = False
+                        break
+                    else:
+                        raise ValueError("\nTaking it as a yes")
+                except ValueError:
+                    print(ValueError)
                     continue
-                elif option =='q':
-                    print("\nExiting...")
-                    break
-                else:
-                    raise ValueError("\nTaking it as a yes")
-            except ValueError:
-                print(ValueError)
-                continue
-        elif choice == 3:
-            params = {
-                "id":id,
-                "intent":"clinic_hours",
-                "mailID":mail_id
-            }
-            patient.take_query(params)
-            null_output = patient.response.json()
-            print(null_output['message'])
-            try:
-                option = input("Enter 'Y' to continue 'Q' to quit: ").lower()
-                if option == 'y':
-                    print("\nUnderstood..")
+            elif response == "clinic_hours":
+                params = {
+                    "id":id,
+                    "intent":"clinic_hours",
+                    "mailID":mail_id
+                }
+                patient.take_query(params)
+                null_output = patient.response.json()
+                print(null_output['message'])
+                try:
+                    option = input("Enter 'Y' to continue 'Q' to quit: ").lower()
+                    if option == 'y':
+                        print("\nUnderstood..")
+                        continue
+                    elif option =='q':
+                        print("\nExiting...")
+                        exit = False
+                        break
+                    else:
+                        raise ValueError("\nTaking it as a yes")
+                except ValueError:
+                    print(ValueError)
                     continue
-                elif option =='q':
-                    print("\nExiting...")
-                    break
-                else:
-                    raise ValueError("\nTaking it as a yes")
-            except ValueError:
-                print(ValueError)
-                continue
-        elif choice == 4:
-            params = {
-                "id":id,
-                "intent": "appointment_booking",
-                "mailID":mail_id
-            }
-            patient.take_query(params)
-            null_output = patient.response.json()
-            print(null_output['message'])
-            try:
-                option = input("Enter 'Y' to continue 'Q' to quit: ").lower()
-                if option == 'y':
-                    print("\nUnderstood..")
+            elif response == "appointment_booking":
+                params = {
+                    "id":id,
+                    "intent": "appointment_booking",
+                    "mailID":mail_id
+                }
+                patient.take_query(params)
+                null_output = patient.response.json()
+                print(null_output['message'])
+                try:
+                    option = input("Enter 'Y' to continue 'Q' to quit: ").lower()
+                    if option == 'y':
+                        print("\nUnderstood..")
+                        continue
+                    elif option =='q':
+                        print("\nExiting...")
+                        exit = False
+                        break
+                    else:
+                        raise ValueError("\nTaking it as a yes")
+                except ValueError:
+                    print(ValueError)
                     continue
-                elif option =='q':
-                    print("\nExiting...")
-                    break
-                else:
-                    raise ValueError("\nTaking it as a yes")
-            except ValueError:
-                print(ValueError)
-                continue
-        elif choice == 5:
-            print("Exiting the AI assistant. Goodbye!")
-            break
-        else:
-            print("Invalid choice! Please enter a number between 1 and 5.")
-            continue
+            elif response == "unknown":
+                print("This query wll be better handled by consulting the inquiry center!")
+                try:
+                    option = input("Enter 'Y' to continue 'Q' to quit: ").lower()
+                    if option == 'y':
+                        print("\nUnderstood..")
+                        continue
+                    elif option =='q':
+                        print("\nExiting...")
+                        exit= False
+                        break
+                    else:
+                        raise ValueError("\nTaking it as a yes")
+                except ValueError:
+                    print(ValueError)
+                    continue
+            else:
+                print("Exiting..!")
+                exit = False
+                break
+        
 
 main()
